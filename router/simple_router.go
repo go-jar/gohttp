@@ -122,6 +122,7 @@ func (router *SimpleRouter) FindRoute(path string) *Route {
 func (router *SimpleRouter) getRoute(controllerName, actionName string) *Route {
 	controllerName = strings.ToLower(controllerName)
 	actionName = strings.ToLower(actionName)
+	
 	ctrlItem, ok := router.controllerTable[controllerName]
 	if !ok {
 		return nil
