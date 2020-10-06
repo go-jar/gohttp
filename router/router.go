@@ -11,6 +11,6 @@ type Route struct {
 }
 
 type Router interface {
-	RegistRoutes(cls ...controller.Controller)
+	RegisterRoutes(cls ...controller.Controller)
 	FindRoute(path string) *Route
 }

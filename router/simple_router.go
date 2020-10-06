@@ -14,7 +14,7 @@ type SimpleRouter struct {
 }
 
 type controllerItem struct {
-	controller     controller.Controller
+	ctrl           controller.Controller
 	actionValueMap map[string]*actionItem
 }
 
@@ -30,26 +30,28 @@ func NewSimpleRouter() *SimpleRouter {
 	}
 }
 
-func (router *SimpleRouter) RegistRoutes(controllers ...controller.Controller) {
-	for _, controller := range controllers {
-		router.registRoute(controller)
+func (sr *SimpleRouter) RegisterRoutes(cls ...controller.Controller) {
+	for _, ctrl := range cls {
+		sr.registerRoute(ctrl)
 	}
 }
 
-func (router *SimpleRouter) registRoute(controller controller.Controller) {
-	if router.getControllerItem(controller) != nil {
+func (sr *SimpleRouter) registerRoute(ctrl controller.Controller) {
+	if sr.getControllerItem(ctrl) != nil {
 		return
 	}
 
-	controllerType := reflect.TypeOf(controller)
-	controllerValue := reflect.ValueOf(controller)
+	controllerType := reflect.TypeOf(ctrl)
+	controllerValue := reflect.ValueOf(ctrl)
 	actItem := make(map[string]*actionItem)
 
 	for i := 0; i < controllerValue.NumMethod(); i++ {
 		actionName := controllerType.Method(i).Name
-		if actionName = router.getActionName(actionName); actionName == "" {
+		actionName = sr.getActionName(actionName)
+		if actionName == "" {
 			continue
 		}
+
 		action := controllerValue.Method(i)
 		actItem[actionName] = &actionItem{
 			actionValue: &action,
@@ -57,29 +59,29 @@ func (router *SimpleRouter) registRoute(controller controller.Controller) {
 	}
 
 	controllerName := controllerType.String()
-	controllerName = router.getControllerName(controllerName)
-	router.controllerTable[controllerName] = &controllerItem{
-		controller:     controller,
+	controllerName = sr.getControllerName(controllerName)
+	sr.controllerTable[controllerName] = &controllerItem{
+		ctrl:           ctrl,
 		actionValueMap: actItem,
 	}
 }
 
-func (router *SimpleRouter) getControllerItem(controller controller.Controller) *controllerItem {
-	controllerType := reflect.TypeOf(controller)
-	controllerName := router.getControllerName(controllerType.String())
+func (sr *SimpleRouter) getControllerItem(ctrl controller.Controller) *controllerItem {
+	controllerType := reflect.TypeOf(ctrl)
+	controllerName := sr.getControllerName(controllerType.String())
 	if controllerName == "" {
 		return nil
 	}
 
-	ctrlItem, ok := router.controllerTable[controllerName]
+	ctrlItem, ok := sr.controllerTable[controllerName]
 	if !ok {
 		return nil
 	}
 	return ctrlItem
 }
 
-func (router *SimpleRouter) getControllerName(controllerName string) string {
-	matches := router.controllerRegex.FindStringSubmatch(controllerName)
+func (sr *SimpleRouter) getControllerName(controllerName string) string {
+	matches := sr.controllerRegex.FindStringSubmatch(controllerName)
 	if matches == nil {
 		return ""
 	}
@@ -87,8 +89,8 @@ func (router *SimpleRouter) getControllerName(controllerName string) string {
 	return strings.ToLower(matches[1])
 }
 
-func (router *SimpleRouter) getActionName(actionName string) string {
-	matches := router.actionRegex.FindStringSubmatch(actionName)
+func (sr *SimpleRouter) getActionName(actionName string) string {
+	matches := sr.actionRegex.FindStringSubmatch(actionName)
 	if matches == nil {
 		return ""
 	}
@@ -101,7 +103,7 @@ func (router *SimpleRouter) getActionName(actionName string) string {
 	return strings.ToLower(matches[1])
 }
 
-func (router *SimpleRouter) FindRoute(path string) *Route {
+func (sr *SimpleRouter) FindRoute(path string) *Route {
 	path = strings.Trim(path, "/")
 	pathSplit := strings.Split(path, "/")
 
@@ -115,15 +117,14 @@ func (router *SimpleRouter) FindRoute(path string) *Route {
 		return nil
 	}
 
-	route := router.getRoute(controllerName, actionName)
+	route := sr.getRoute(controllerName, actionName)
 	return route
 }
 
-func (router *SimpleRouter) getRoute(controllerName, actionName string) *Route {
+func (sr *SimpleRouter) getRoute(controllerName, actionName string) *Route {
 	controllerName = strings.ToLower(controllerName)
 	actionName = strings.ToLower(actionName)
-	
-	ctrlItem, ok := router.controllerTable[controllerName]
+	ctrlItem, ok := sr.controllerTable[controllerName]
 	if !ok {
 		return nil
 	}
@@ -133,7 +134,7 @@ func (router *SimpleRouter) getRoute(controllerName, actionName string) *Route {
 		return nil
 	}
 	return &Route{
-		Controller:  ctrlItem.controller,
+		Controller:  ctrlItem.ctrl,
 		ActionValue: actItem.actionValue,
 	}
 }

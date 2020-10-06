@@ -11,8 +11,8 @@ type ActionContext interface {
 	ResponseWriter() http.ResponseWriter
 
 	ResponseBody() []byte
-	SetResonseBody(body []byte)
-	AppendResopnseBody(body []byte)
+	SetResponseBody(body []byte)
+	AppendResponseBody(body []byte)
 
 	BeforeAction()
 	AfterAction()
@@ -25,42 +25,42 @@ type BaseContext struct {
 	responseBody   []byte
 }
 
-func NewBaseContext(responseWriter http.ResponseWriter, request *http.Request) *BaseContext {
+func NewBaseContext(w http.ResponseWriter, req *http.Request) *BaseContext {
 	return &BaseContext{
-		request:        request,
-		responseWriter: responseWriter,
+		request:        req,
+		responseWriter: w,
 	}
 }
 
-func (context *BaseContext) Request() *http.Request {
-	return context.request
+func (bc *BaseContext) Request() *http.Request {
+	return bc.request
 }
 
-func (context *BaseContext) ResponseWriter() http.ResponseWriter {
-	return context.responseWriter
+func (bc *BaseContext) ResponseWriter() http.ResponseWriter {
+	return bc.responseWriter
 }
 
-func (context *BaseContext) ResponseBody() []byte {
-	return context.responseBody
+func (bc *BaseContext) ResponseBody() []byte {
+	return bc.responseBody
 }
 
-func (context *BaseContext) SetResonseBody(body []byte) {
-	context.responseBody = body
+func (bc *BaseContext) SetResponseBody(body []byte) {
+	bc.responseBody = body
 }
 
-func (context *BaseContext) AppendResopnseBody(body []byte) {
-	context.responseBody = gomisc.AppendBytes(context.responseBody, body)
+func (bc *BaseContext) AppendResponseBody(body []byte) {
+	bc.responseBody = gomisc.AppendBytes(bc.responseBody, body)
 }
 
-func (context *BaseContext) BeforeAction() {
+func (bc *BaseContext) BeforeAction() {
 }
 
-func (context *BaseContext) AfterAction() {
+func (bc *BaseContext) AfterAction() {
 }
 
-func (context *BaseContext) Destruct() {
+func (bc *BaseContext) Destruct() {
 }
 
 type Controller interface {
-	NewActionContext(responseWriter http.ResponseWriter, request *http.Request) ActionContext
+	NewActionContext(w http.ResponseWriter, req *http.Request) ActionContext
 }

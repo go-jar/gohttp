@@ -11,18 +11,18 @@ import (
 
 func TestSystem(t *testing.T) {
 	demoController := new(DemoController)
-	router := router.NewSimpleRouter()
-	router.RegistRoutes(demoController)
-	system := NewSystem(router)
-	_ = gracehttp.ListenAndServe(":8010", system)
+	simpleRouter := router.NewSimpleRouter()
+	simpleRouter.RegisterRoutes(demoController)
+	sys := NewSystem(simpleRouter)
+	_ = gracehttp.ListenAndServe(":8010", sys)
 }
 
 type DemoController struct {
 }
 
-func (demo *DemoController) NewActionContext(responseWriter http.ResponseWriter, request *http.Request) controller.ActionContext {
+func (dc *DemoController) NewActionContext(w http.ResponseWriter, req *http.Request) controller.ActionContext {
 	return &DemoContext{
-		controller.NewBaseContext(responseWriter, request),
+		controller.NewBaseContext(w, req),
 	}
 }
 
@@ -30,22 +30,22 @@ type DemoContext struct {
 	*controller.BaseContext
 }
 
-func (context *DemoContext) BeforeAction() {
-	context.AppendResopnseBody([]byte("before demo action\n"))
+func (c *DemoContext) BeforeAction() {
+	c.AppendResponseBody([]byte("before demo action\n"))
 }
 
-func (context *DemoContext) AfterAction() {
-	context.AppendResopnseBody([]byte("after demo action\n"))
+func (c *DemoContext) AfterAction() {
+	c.AppendResponseBody([]byte("after demo action\n"))
 }
 
-func (demoContext *DemoContext) Destruct() {
-	fmt.Println("desctuct demo context")
+func (c *DemoContext) Destruct() {
+	fmt.Println("destruct demo context")
 }
 
-func (demoController *DemoController) DescribeDemoAction(context *DemoContext) {
-	context.AppendResopnseBody([]byte("DescribeDemo\n"))
+func (dc *DemoController) DescribeDemoAction(c *DemoContext) {
+	c.AppendResponseBody([]byte("DescribeDemo\n"))
 }
 
-func (demoController *DemoController) RedirectAction(context *DemoContext) {
+func (dc *DemoController) RedirectAction(c *DemoContext) {
 	Redirect302("https://baidu.com")
 }

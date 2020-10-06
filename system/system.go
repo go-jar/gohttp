@@ -7,39 +7,39 @@ import (
 	"reflect"
 )
 
-type RoutePathFunc func(request *http.Request) string
+type RoutePathFunc func(req *http.Request) string
 
 type System struct {
 	router        router.Router
 	routePathFunc RoutePathFunc
 }
 
-func NewSystem(router router.Router) *System {
-	system := &System{
-		router: router,
+func NewSystem(rt router.Router) *System {
+	sys := &System{
+		router: rt,
 	}
 
-	system.routePathFunc = system.getRoutePathFunc
-	return system
+	sys.routePathFunc = sys.routePath
+	return sys
 }
 
-func (system *System) getRoutePathFunc(request *http.Request) string {
-	return request.URL.Path
+func (s *System) routePath(req *http.Request) string {
+	return req.URL.Path
 }
 
-func (system *System) SetRouteFunc(routePathFunc RoutePathFunc) {
-	system.routePathFunc = routePathFunc
+func (s *System) SetRouteFunc(routePathFunc RoutePathFunc) {
+	s.routePathFunc = routePathFunc
 }
 
-func (system *System) ServeHTTP(responseWriter http.ResponseWriter, request *http.Request) {
-	path := system.routePathFunc(request)
-	route := system.router.FindRoute(path)
+func (s *System) ServeHTTP(w http.ResponseWriter, req *http.Request) {
+	path := s.routePathFunc(req)
+	route := s.router.FindRoute(path)
 	if route == nil {
-		http.NotFound(responseWriter, request)
+		http.NotFound(w, req)
 		return
 	}
 
-	context := route.Controller.NewActionContext(responseWriter, request)
+	actionContext := route.Controller.NewActionContext(w, req)
 
 	defer func() {
 		if err := recover(); err != nil {
@@ -47,33 +47,33 @@ func (system *System) ServeHTTP(responseWriter http.ResponseWriter, request *htt
 			if !ok {
 				panic(err)
 			}
-			jmpItem.jumpFunc(context, jmpItem.args...)
+			jmpItem.jumpFunc(actionContext, jmpItem.args...)
 		}
-		_, _ = responseWriter.Write(context.ResponseBody())
-		context.Destruct()
+		_, _ = w.Write(actionContext.ResponseBody())
+		actionContext.Destruct()
 	}()
 
-	context.BeforeAction()
-	route.ActionValue.Call(system.makeArgs(context))
-	context.AfterAction()
+	actionContext.BeforeAction()
+	route.ActionValue.Call(s.makeArgs(actionContext))
+	actionContext.AfterAction()
 }
 
-func (system *System) makeArgs(context controller.ActionContext) []reflect.Value {
+func (s *System) makeArgs(ctxt controller.ActionContext) []reflect.Value {
 	argsValues := make([]reflect.Value, 1)
-	argsValues[0] = reflect.ValueOf(context)
+	argsValues[0] = reflect.ValueOf(ctxt)
 	return argsValues
 }
 
-type JumpFunction func(context controller.ActionContext, args ...interface{})
+type JumpFunction func(ctxt controller.ActionContext, args ...interface{})
 
 type jumpItem struct {
 	jumpFunc JumpFunction
 	args     []interface{}
 }
 
-func JumpOutAction(jumpFunc JumpFunction, args ...interface{}) {
+func JumpOutAction(jf JumpFunction, args ...interface{}) {
 	jmpItem := &jumpItem{
-		jumpFunc: jumpFunc,
+		jumpFunc: jf,
 		args:     args,
 	}
 	panic(jmpItem)
@@ -83,6 +83,6 @@ func Redirect302(url string) {
 	JumpOutAction(redirect302, url)
 }
 
-func redirect302(context controller.ActionContext, args ...interface{}) {
-	http.Redirect(context.ResponseWriter(), context.Request(), args[0].(string), 302)
+func redirect302(ctxt controller.ActionContext, args ...interface{}) {
+	http.Redirect(ctxt.ResponseWriter(), ctxt.Request(), args[0].(string), 302)
 }
