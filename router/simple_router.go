@@ -37,7 +37,7 @@ func (sr *SimpleRouter) RegisterRoutes(cls ...controller.Controller) {
 }
 
 func (sr *SimpleRouter) registerRoute(ctrl controller.Controller) {
-	if sr.getControllerItem(ctrl) != nil {
+	if sr.isControllerItemExist(ctrl) {
 		return
 	}
 
@@ -66,18 +66,18 @@ func (sr *SimpleRouter) registerRoute(ctrl controller.Controller) {
 	}
 }
 
-func (sr *SimpleRouter) getControllerItem(ctrl controller.Controller) *controllerItem {
+func (sr *SimpleRouter) isControllerItemExist(ctrl controller.Controller) bool {
 	controllerType := reflect.TypeOf(ctrl)
 	controllerName := sr.getControllerName(controllerType.String())
 	if controllerName == "" {
-		return nil
+		return false
 	}
 
-	ctrlItem, ok := sr.controllerTable[controllerName]
+	_, ok := sr.controllerTable[controllerName]
 	if !ok {
-		return nil
+		return false
 	}
-	return ctrlItem
+	return true
 }
 
 func (sr *SimpleRouter) getControllerName(controllerName string) string {
@@ -124,6 +124,7 @@ func (sr *SimpleRouter) FindRoute(path string) *Route {
 func (sr *SimpleRouter) getRoute(controllerName, actionName string) *Route {
 	controllerName = strings.ToLower(controllerName)
 	actionName = strings.ToLower(actionName)
+
 	ctrlItem, ok := sr.controllerTable[controllerName]
 	if !ok {
 		return nil
@@ -133,6 +134,7 @@ func (sr *SimpleRouter) getRoute(controllerName, actionName string) *Route {
 	if !ok {
 		return nil
 	}
+
 	return &Route{
 		Controller:  ctrlItem.ctrl,
 		ActionValue: actItem.actionValue,

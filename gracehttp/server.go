@@ -3,7 +3,6 @@ package gracehttp
 import (
 	"context"
 	"crypto/tls"
-	"fmt"
 	"log"
 	"net"
 	"net/http"
@@ -20,61 +19,58 @@ const (
 	GRACEFUL_LISTENER_FD    = 3
 )
 
-// HTTP server that supported graceful shutdown or restart
 type Server struct {
 	httpServer *http.Server
 	listener   net.Listener
 
-	isGraceful   bool
+	isChild      bool
 	signalChan   chan os.Signal
 	shutdownChan chan bool
 }
 
 func NewServer(addr string, handler http.Handler, readTimeout, writeTimeout time.Duration) *Server {
-	isGraceful := false
+	isChild := false
 	if os.Getenv(GRACEFUL_ENVIRON_KEY) != "" {
-		isGraceful = true
+		isChild = true
 	}
 
 	return &Server{
 		httpServer: &http.Server{
-			Addr:    addr,
-			Handler: handler,
-
+			Addr:         addr,
+			Handler:      handler,
 			ReadTimeout:  readTimeout,
 			WriteTimeout: writeTimeout,
 		},
-
-		isGraceful:   isGraceful,
+		isChild:      isChild,
 		signalChan:   make(chan os.Signal),
 		shutdownChan: make(chan bool),
 	}
 }
 
-func (srv *Server) ListenAndServe() error {
-	addr := srv.httpServer.Addr
+func (s *Server) ListenAndServe() error {
+	addr := s.httpServer.Addr
 	if addr == "" {
 		addr = ":http"
 	}
 
-	ln, err := srv.getNetListener(addr)
+	ln, err := s.Listen(addr)
 	if err != nil {
 		return err
 	}
+	s.listener = ln
 
-	srv.listener = ln
-	return srv.Serve()
+	return s.Serve(ln)
 }
 
-func (srv *Server) ListenAndServeTLS(certFile, keyFile string) error {
-	addr := srv.httpServer.Addr
+func (s *Server) ListenAndServeTLS(certFile, keyFile string) error {
+	addr := s.httpServer.Addr
 	if addr == "" {
 		addr = ":https"
 	}
 
 	config := &tls.Config{}
-	if srv.httpServer.TLSConfig != nil {
-		*config = *srv.httpServer.TLSConfig
+	if s.httpServer.TLSConfig != nil {
+		*config = *s.httpServer.TLSConfig
 	}
 	if config.NextProtos == nil {
 		config.NextProtos = []string{"http/1.1"}
@@ -87,129 +83,133 @@ func (srv *Server) ListenAndServeTLS(certFile, keyFile string) error {
 		return err
 	}
 
-	ln, err := srv.getNetListener(addr)
+	ln, err := s.Listen(addr)
 	if err != nil {
 		return err
 	}
 
-	srv.listener = tls.NewListener(ln, config)
-	return srv.Serve()
+	s.listener = tls.NewListener(ln, config)
+	return s.Serve(s.listener)
 }
 
-func (srv *Server) Serve() error {
-	go srv.handleSignals()
-	err := srv.httpServer.Serve(srv.listener)
-
-	srv.logf("waiting for connections closed.")
-	<-srv.shutdownChan
-	srv.logf("all connections closed.")
-
-	return err
-}
-
-func (srv *Server) getNetListener(addr string) (net.Listener, error) {
+func (s *Server) Listen(addr string) (net.Listener, error) {
 	var ln net.Listener
 	var err error
 
-	if srv.isGraceful {
+	if s.isChild {
 		file := os.NewFile(GRACEFUL_LISTENER_FD, "")
 		ln, err = net.FileListener(file)
 		if err != nil {
-			err = fmt.Errorf("net.FileListener error: %v", err)
+			s.logf("net.FileListener error: %v", err)
 			return nil, err
 		}
 	} else {
 		ln, err = net.Listen("tcp", addr)
 		if err != nil {
-			err = fmt.Errorf("net.Listen error: %v", err)
+			s.logf("net.Listen error: %v", err)
 			return nil, err
 		}
 	}
 	return ln, nil
 }
 
-func (srv *Server) handleSignals() {
+func (s *Server) Serve(l net.Listener) error {
+	go s.handleSignals()
+	err := s.httpServer.Serve(l)
+
+	s.logf("Waiting for connections to be closed.")
+	<-s.shutdownChan
+	s.logf("All connections has been closed.")
+
+	return err
+}
+
+func (s *Server) handleSignals() {
 	var sig os.Signal
 
 	signal.Notify(
-		srv.signalChan,
+		s.signalChan,
 		syscall.SIGTERM,
 		syscall.SIGUSR2,
 	)
 
 	for {
-		sig = <-srv.signalChan
+		sig = <-s.signalChan
 		switch sig {
 		case syscall.SIGTERM:
-			srv.logf("received SIGTERM, graceful shutting down HTTP server.")
-			srv.shutdownHTTPServer()
+			s.logf("Receive signal SIGTERM. To shut down the server gracefully.")
+			s.Shutdown()
 		case syscall.SIGUSR2:
-			srv.logf("received SIGUSR2, graceful restarting HTTP server.")
-
-			if pid, err := srv.startNewProcess(); err != nil {
-				srv.logf("start new process failed: %v, continue serving.", err)
+			s.logf("Receive signal SIGUSR2. To restart the server gracefully.")
+			pid, err := s.startNewProcess()
+			if err != nil {
+				s.logf("Failed to start a new process: %v. Continue serving.", err)
 			} else {
-				srv.logf("start new process successed, the new pid is %d.", pid)
-				srv.shutdownHTTPServer()
+				s.logf("A new process %v has been started successfully. To shut down the server gracefully.", pid)
+				s.Shutdown()
 			}
-		default:
 		}
 	}
 }
 
-func (srv *Server) shutdownHTTPServer() {
-	if err := srv.httpServer.Shutdown(context.Background()); err != nil {
-		srv.logf("HTTP server shutdown error: %v", err)
+func (s *Server) Shutdown() {
+	if err := s.httpServer.Shutdown(context.Background()); err != nil { // Shutdown gracefully
+		s.logf("httpServer.Shutdown error: %v", err)
 	} else {
-		srv.logf("HTTP server shutdown success.")
-		srv.shutdownChan <- true
+		s.logf("The http server has been shut down successfully.")
+		s.shutdownChan <- true
 	}
 }
 
-// start new process to handle HTTP Connection
-func (srv *Server) startNewProcess() (uintptr, error) {
-	listenerFd, err := srv.getTCPListenerFd()
+func (s *Server) startNewProcess() (uintptr, error) {
+	listenerFd, err := s.getListenerFd()
 	if err != nil {
-		return 0, fmt.Errorf("failed to get socket file descriptor: %v", err)
+		s.logf("getListenerFd error: %v", err)
+		return 0, err
 	}
 
-	// set graceful restart env flag
-	envs := []string{}
-	for _, value := range os.Environ() {
-		if value != GRACEFUL_ENVIRON_STRING {
-			envs = append(envs, value)
-		}
+	envs := os.Environ()
+	if os.Getenv(GRACEFUL_ENVIRON_KEY) == "" {
+		envs = append(envs, GRACEFUL_ENVIRON_STRING)
 	}
-	envs = append(envs, GRACEFUL_ENVIRON_STRING)
 
-	execSpec := &syscall.ProcAttr{
+	procAttr := &syscall.ProcAttr{
 		Env:   envs,
 		Files: []uintptr{os.Stdin.Fd(), os.Stdout.Fd(), os.Stderr.Fd(), listenerFd},
 	}
 
-	fork, err := syscall.ForkExec(os.Args[0], os.Args, execSpec)
+	child, err := syscall.ForkExec(os.Args[0], os.Args, procAttr)
 	if err != nil {
-		return 0, fmt.Errorf("failed to forkexec: %v", err)
-	}
-
-	return uintptr(fork), nil
-}
-
-func (srv *Server) getTCPListenerFd() (uintptr, error) {
-	file, err := srv.listener.(*net.TCPListener).File()
-	if err != nil {
+		s.logf("syscall.ForkExec error: %v", err)
 		return 0, err
 	}
-	return file.Fd(), nil
+	return uintptr(child), nil
 }
 
-func (srv *Server) logf(format string, args ...interface{}) {
-	pids := strconv.Itoa(os.Getpid())
-	format = "[pid " + pids + "] " + format
-
-	if srv.httpServer.ErrorLog != nil {
-		srv.httpServer.ErrorLog.Printf(format, args...)
+func (s *Server) getListenerFd() (uintptr, error) {
+	file, err := s.listener.(*net.TCPListener).File()
+	if err != nil {
+		return 0, err
 	} else {
-		log.Printf(format, args...)
+		return file.Fd(), nil
+	}
+}
+
+func (s *Server) logf(pattern string, args ...interface{}) {
+	pid := strconv.Itoa(os.Getpid())
+	pattern = "[pid: " + pid + "] " + pattern
+
+	if s.httpServer.ErrorLog != nil {
+		if args != nil {
+			s.httpServer.ErrorLog.Printf(pattern, args)
+		} else {
+			s.httpServer.ErrorLog.Println(pattern, args)
+		}
+	} else {
+		if args != nil {
+			log.Printf(pattern, args)
+		} else {
+			log.Println(pattern)
+		}
 	}
 }
