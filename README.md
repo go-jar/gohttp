@@ -2,18 +2,24 @@
 
 ## 1.1 Server
 ```
-$ cd system
-$ go test
+$ cd gohttp
+$ go build -o example example.go 
 
 destruct demo context
+
 destruct demo context
-2020/10/08 15:36:58 [pid: 31061] Receive signal SIGUSR2. To restart the server gracefully.
-2020/10/08 15:36:58 [pid: 31061] A new process [31129] has been started successfully. To shut down the server gracefully.
-2020/10/08 15:36:58 [pid: 31061] The http server has been shut down successfully.
-2020/10/08 15:36:58 [pid: 31061] Waiting for connections to be closed.
-2020/10/08 15:36:58 [pid: 31061] All connections has been closed.
-PASS
-ok  	gohttp/system	19.913s
+
+2020/10/09 09:43:56 [pid: 32339] Receive signal SIGUSR2. To restart the server gracefully.
+2020/10/09 09:43:56 [pid: 32339] A new process [32759] has been started successfully. To shut down the server gracefully.
+2020/10/09 09:43:56 [pid: 32339] The http server has been shut down successfully.
+2020/10/09 09:43:56 [pid: 32339] Waiting for connections to be closed.
+2020/10/09 09:43:56 [pid: 32339] All connections has been closed.
+
+2020/10/09 09:45:48 [pid: 32759] Receive signal SIGUSR2. To restart the server gracefully.
+2020/10/09 09:45:48 [pid: 32759] A new process [832] has been started successfully. To shut down the server gracefully.
+2020/10/09 09:45:48 [pid: 32759] The http server has been shut down successfully.
+2020/10/09 09:45:48 [pid: 32759] Waiting for connections to be closed.
+2020/10/09 09:45:48 [pid: 32759] All connections has been closed.
 ```
 
 ## 1.2 Client
@@ -27,12 +33,17 @@ $ curl http://127.0.0.1:8010/demo/Redirect
 <a href="https://baidu.com">Found</a>
 before demo action
 
-$ ps -ef | grep go
-root     31004 23568  2 15:36 pts/1    00:00:00 go test
-root     31061 31004  0 15:36 pts/1    00:00:00 /tmp/go-build404490548/b001/system.test -test.timeout=10m0s
-root     31094 23887  0 15:36 pts/6    00:00:00 grep --color=auto go
+$ ps -ef | grep example
+root     32339 29709  0 09:42 pts/1    00:00:00 ./example
+root     32621 30048  0 09:43 pts/6    00:00:00 grep --color=auto example
 
-$ kill -USR2 31061
+$ kill -USR2 32339
+
+$ ps -ef | grep example
+root       650 30048  0 09:45 pts/6    00:00:00 grep --color=auto example
+root     32759     1  0 09:43 pts/1    00:00:00 ./example
+
+$ kill -USR2 32759
 ```
 
 # 2 gracehttp

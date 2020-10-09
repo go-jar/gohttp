@@ -190,9 +190,8 @@ func (s *Server) getListenerFd() (uintptr, error) {
 	file, err := s.listener.(*net.TCPListener).File()
 	if err != nil {
 		return 0, err
-	} else {
-		return file.Fd(), nil
 	}
+	return file.Fd(), nil
 }
 
 func (s *Server) logf(pattern string, args ...interface{}) {

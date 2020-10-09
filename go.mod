@@ -1,8 +1,5 @@
 module gohttp
 
-go 1.14
+go 1.13
 
-require (
-	github.com/goinbox/gomisc v1.2.0
-	github.com/tabalt/gracehttp v1.3.0
-)
+require github.com/goinbox/gomisc v1.2.0

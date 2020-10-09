@@ -1,19 +1,19 @@
-package system
+package main
 
 import (
 	"fmt"
 	"gohttp/controller"
 	"gohttp/gracehttp"
 	"gohttp/router"
+	"gohttp/system"
 	"net/http"
-	"testing"
 )
 
-func TestSystem(t *testing.T) {
+func main() {
 	demoController := new(DemoController)
 	simpleRouter := router.NewSimpleRouter()
 	simpleRouter.RegisterRoutes(demoController)
-	sys := NewSystem(simpleRouter)
+	sys := system.NewSystem(simpleRouter)
 	_ = gracehttp.ListenAndServe(":8010", sys)
 }
 
@@ -47,5 +47,5 @@ func (dc *DemoController) DescribeDemoAction(c *DemoContext) {
 }
 
 func (dc *DemoController) RedirectAction(c *DemoContext) {
-	Redirect302("https://baidu.com")
+	system.Redirect302("https://baidu.com")
 }
