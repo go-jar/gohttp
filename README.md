@@ -3,7 +3,8 @@
 ## 1.1 Server
 ```
 $ cd gohttp
-$ go build -o example example.go 
+$ go build -o example example.go
+$ ./example
 
 destruct demo context
 
