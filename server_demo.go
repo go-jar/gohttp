@@ -6,6 +6,8 @@ import (
 	"gohttp/gracehttp"
 	"gohttp/router"
 	"gohttp/system"
+	"io/ioutil"
+	"log"
 	"net/http"
 )
 
@@ -42,10 +44,24 @@ func (c *DemoContext) Destruct() {
 	fmt.Println("destruct demo context")
 }
 
+func (dc *DemoController) RedirectAction(c *DemoContext) {
+	system.Redirect302("https://baidu.com")
+}
+
 func (dc *DemoController) DescribeDemoAction(c *DemoContext) {
 	c.AppendResponseBody([]byte("DescribeDemo\n"))
 }
 
-func (dc *DemoController) RedirectAction(c *DemoContext) {
-	system.Redirect302("https://baidu.com")
+func (dc *DemoController) ProcessPostAction(c *DemoContext) {
+	body, err := ioutil.ReadAll(c.Request().Body)
+	if err != nil {
+		log.Println("Read failed:", err)
+	}
+
+	defer c.Request().Body.Close()
+
+	msg := "Hi, Client! Your data is: " + string(body) + "\n"
+	c.ResponseWriter().Write([]byte(msg))
+
+	fmt.Println(string(body))
 }
