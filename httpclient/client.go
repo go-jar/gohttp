@@ -85,7 +85,7 @@ func (c *Client) Do(methodType string, url string, body []byte) (*Response, erro
 	}
 
 	msg := [][]byte{
-		[]byte("Url: " + url),
+		[]byte("URL: " + url),
 		[]byte("TimeDuration: " + timeDuration.String()),
 	}
 	if err != nil {
