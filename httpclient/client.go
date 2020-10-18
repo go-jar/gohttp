@@ -85,19 +85,19 @@ func (c *Client) Do(methodType string, url string, body []byte) (*Response, erro
 	}
 
 	msg := [][]byte{
-		[]byte("URL:" + url),
-		[]byte("TimeDuration:" + timeDuration.String()),
+		[]byte("Url: " + url),
+		[]byte("TimeDuration: " + timeDuration.String()),
 	}
 	if err != nil {
 		if resp != nil {
-			msg = append(msg, []byte("StatusCode:"+strconv.Itoa(resp.StatusCode)))
+			msg = append(msg, []byte("StatusCode: "+strconv.Itoa(resp.StatusCode)))
 		}
-		msg = append(msg, []byte("Error:"+err.Error()))
+		msg = append(msg, []byte("Error: "+err.Error()))
 		c.logger.Error(bytes.Join(msg, []byte("\t")))
 		return nil, err
 	}
 
-	msg = append(msg, []byte("StatusCode:"+strconv.Itoa(resp.StatusCode)))
+	msg = append(msg, []byte("StatusCode: "+strconv.Itoa(resp.StatusCode)))
 	c.logger.Info(bytes.Join(msg, []byte("\t")))
 
 	contents, err := ioutil.ReadAll(resp.Body)
