@@ -9,7 +9,7 @@ import (
 
 func TestGet(t *testing.T) {
 	client := newClient()
-	resp, err := client.Get("http://127.0.0.1:8010/demo/DescribeDemo", nil, "")
+	resp, err := client.Get("http://127.0.0.1:8010/demo/DescribeDemo", nil, "", 1)
 	if err != nil {
 		fmt.Println(err)
 	}
@@ -24,7 +24,7 @@ func TestPost(t *testing.T) {
 		"c": 3,
 	}
 
-	resp, err := client.Post("http://127.0.0.1:8010/demo/ProcessPost", params, nil, "")
+	resp, err := client.Post("http://127.0.0.1:8010/demo/ProcessPost", params, nil, "", 1)
 	if err != nil {
 		fmt.Println(err)
 	}

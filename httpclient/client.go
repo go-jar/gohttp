@@ -14,10 +14,6 @@ import (
 	"github.com/go-jar/golog"
 )
 
-const (
-	DEFAULT_RETRY = 3
-)
-
 type Client struct {
 	config *Config
 	logger golog.ILogger
@@ -47,7 +43,6 @@ func NewClient(cfg *Config, l golog.ILogger) *Client {
 	return &Client{
 		config: NewConfig(),
 		logger: l,
-		retry:  DEFAULT_RETRY,
 		Client: &http.Client{
 			Timeout: cfg.Timeout,
 			Transport: &http.Transport{
@@ -65,31 +60,27 @@ func NewClient(cfg *Config, l golog.ILogger) *Client {
 	}
 }
 
-func (c *Client) SetRetry(retry int) {
-	c.retry = retry
-}
-
-func (c *Client) Get(url string, headers map[string]string, ip string) (*Response, error) {
+func (c *Client) Get(url string, headers map[string]string, ip string, retry int) (*Response, error) {
 	req, err := NewRequest(http.MethodGet, url, nil, headers, ip)
 	if err != nil {
 		return nil, err
 	}
 
-	return c.Do(req)
+	return c.Do(req, retry)
 }
 
-func (c *Client) Post(ur string, data map[string]interface{}, headers map[string]string, ip string) (*Response, error) {
-	body := c.GeneratePostBody(data)
+func (c *Client) Post(ur string, data map[string]interface{}, headers map[string]string, ip string, retry int) (*Response, error) {
+	body := c.MakePostBody(data)
 
 	req, err := NewRequest(http.MethodGet, ur, body, headers, ip)
 	if err != nil {
 		return nil, err
 	}
 
-	return c.Do(req)
+	return c.Do(req, retry)
 }
 
-func (c *Client) GeneratePostBody(data map[string]interface{}) []byte {
+func (c *Client) MakePostBody(data map[string]interface{}) []byte {
 	values := url.Values{}
 	for key, value := range data {
 		values.Add(key, fmt.Sprint(value))
@@ -99,10 +90,14 @@ func (c *Client) GeneratePostBody(data map[string]interface{}) []byte {
 	return body
 }
 
-func (c *Client) Do(req *Request) (*Response, error) {
+func (c *Client) Do(req *Request, retry int) (*Response, error) {
+	if retry <= 0 {
+		retry = 1
+	}
+
 	resp, timeDuration, err := c.do(req)
 	if err != nil {
-		for i := 0; i < c.retry; i++ {
+		for i := 0; i < retry; i++ {
 			resp, timeDuration, err = c.do(req)
 			if err == nil && resp.StatusCode == 200 {
 				break
@@ -125,7 +120,7 @@ func (c *Client) Do(req *Request) (*Response, error) {
 	}
 
 	msg = append(msg, []byte("StatusCode: "+strconv.Itoa(resp.StatusCode)))
-	c.logger.Info(bytes.Join(msg, []byte("\t")))
+	c.logger.Log(c.config.LogLevel, bytes.Join(msg, []byte("\t")))
 
 	contents, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
