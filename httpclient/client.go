@@ -79,12 +79,7 @@ func (c *Client) Get(url string, headers map[string]string, ip string) (*Respons
 }
 
 func (c *Client) Post(ur string, data map[string]interface{}, headers map[string]string, ip string) (*Response, error) {
-	values := url.Values{}
-	for key, value := range data {
-		values.Add(key, fmt.Sprint(value))
-	}
-
-	body := []byte(values.Encode())
+	body := c.GeneratePostBody(data)
 
 	req, err := NewRequest(http.MethodGet, ur, body, headers, ip)
 	if err != nil {
@@ -92,6 +87,16 @@ func (c *Client) Post(ur string, data map[string]interface{}, headers map[string
 	}
 
 	return c.Do(req)
+}
+
+func (c *Client) GeneratePostBody(data map[string]interface{}) []byte {
+	values := url.Values{}
+	for key, value := range data {
+		values.Add(key, fmt.Sprint(value))
+	}
+
+	body := []byte(values.Encode())
+	return body
 }
 
 func (c *Client) Do(req *Request) (*Response, error) {
