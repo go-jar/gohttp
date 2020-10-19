@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/go-jar/golog"
@@ -23,6 +24,16 @@ type Client struct {
 	retry  int
 
 	*http.Client
+}
+
+type Request struct {
+	Method  string
+	Url     string
+	Body    []byte
+	Ip      string
+	Headers map[string]string
+
+	*http.Request
 }
 
 type Response struct {
@@ -58,11 +69,16 @@ func (c *Client) SetRetry(retry int) {
 	c.retry = retry
 }
 
-func (c *Client) Get(url string) (*Response, error) {
-	return c.Do(http.MethodGet, url, nil)
+func (c *Client) Get(url string, headers map[string]string, ip string) (*Response, error) {
+	req, err := NewRequest(http.MethodGet, url, nil, headers, ip)
+	if err != nil {
+		return nil, err
+	}
+
+	return c.Do(req)
 }
 
-func (c *Client) Post(ur string, data map[string]interface{}) (*Response, error) {
+func (c *Client) Post(ur string, data map[string]interface{}, headers map[string]string, ip string) (*Response, error) {
 	values := url.Values{}
 	for key, value := range data {
 		values.Add(key, fmt.Sprint(value))
@@ -70,14 +86,19 @@ func (c *Client) Post(ur string, data map[string]interface{}) (*Response, error)
 
 	body := []byte(values.Encode())
 
-	return c.Do(http.MethodPost, ur, body)
+	req, err := NewRequest(http.MethodGet, ur, body, headers, ip)
+	if err != nil {
+		return nil, err
+	}
+
+	return c.Do(req)
 }
 
-func (c *Client) Do(methodType string, url string, body []byte) (*Response, error) {
-	resp, timeDuration, err := c.do(methodType, url, body)
+func (c *Client) Do(req *Request) (*Response, error) {
+	resp, timeDuration, err := c.do(req)
 	if err != nil {
 		for i := 0; i < c.retry; i++ {
-			resp, timeDuration, err = c.do(methodType, url, body)
+			resp, timeDuration, err = c.do(req)
 			if err == nil && resp.StatusCode == 200 {
 				break
 			}
@@ -85,7 +106,8 @@ func (c *Client) Do(methodType string, url string, body []byte) (*Response, erro
 	}
 
 	msg := [][]byte{
-		[]byte("URL: " + url),
+		[]byte("Host: " + req.Host),
+		[]byte("URL: " + req.Url),
 		[]byte("TimeDuration: " + timeDuration.String()),
 	}
 	if err != nil {
@@ -112,11 +134,9 @@ func (c *Client) Do(methodType string, url string, body []byte) (*Response, erro
 	}, nil
 }
 
-func (c *Client) do(methodType string, url string, body []byte) (*http.Response, time.Duration, error) {
-	req, _ := http.NewRequest(methodType, url, bytes.NewReader(body))
-
+func (c *Client) do(req *Request) (*http.Response, time.Duration, error) {
 	start := time.Now()
-	resp, err := c.Client.Do(req)
+	resp, err := c.Client.Do(req.Request)
 	t := time.Since(start)
 
 	if err != nil {
@@ -124,4 +144,34 @@ func (c *Client) do(methodType string, url string, body []byte) (*http.Response,
 	}
 
 	return resp, t, nil
+}
+
+func NewRequest(method string, url string, body []byte, headers map[string]string, ip string) (*Request, error) {
+	req, err := http.NewRequest(method, url, bytes.NewReader(body))
+	if err != nil {
+		return nil, err
+	}
+
+	req.Host = req.URL.Host
+
+	if ip != "" {
+		s := strings.Split(req.URL.Host, ":")
+		s[0] = ip
+		req.URL.Host = strings.Join(s, ":")
+	}
+
+	if headers != nil {
+		for k, v := range headers {
+			req.Header.Set(k, v)
+		}
+	}
+
+	return &Request{
+		Method:  method,
+		Url:     url,
+		Body:    body,
+		Headers: headers,
+		Ip:      ip,
+		Request: req,
+	}, nil
 }
