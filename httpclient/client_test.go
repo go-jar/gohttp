@@ -24,7 +24,8 @@ func TestPost(t *testing.T) {
 		"c": 3,
 	}
 
-	resp, err := client.Post("http://127.0.0.1:8010/demo/ProcessPost", params, nil, "", 1)
+	body := client.MakePostBodyUrlEncode(params)
+	resp, err := client.Post("http://127.0.0.1:8010/demo/ProcessPost", body, nil, "", 1)
 	if err != nil {
 		fmt.Println(err)
 	}

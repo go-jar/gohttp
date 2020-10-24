@@ -69,10 +69,8 @@ func (c *Client) Get(url string, headers map[string]string, ip string, retry int
 	return c.Do(req, retry)
 }
 
-func (c *Client) Post(ur string, data map[string]interface{}, headers map[string]string, ip string, retry int) (*Response, error) {
-	body := c.MakePostBody(data)
-
-	req, err := NewRequest(http.MethodGet, ur, body, headers, ip)
+func (c *Client) Post(ur string, data []byte, headers map[string]string, ip string, retry int) (*Response, error) {
+	req, err := NewRequest(http.MethodGet, ur, data, headers, ip)
 	if err != nil {
 		return nil, err
 	}
@@ -80,7 +78,7 @@ func (c *Client) Post(ur string, data map[string]interface{}, headers map[string
 	return c.Do(req, retry)
 }
 
-func (c *Client) MakePostBody(data map[string]interface{}) []byte {
+func (c *Client) MakePostBodyUrlEncode(data map[string]interface{}) []byte {
 	values := url.Values{}
 	for key, value := range data {
 		values.Add(key, fmt.Sprint(value))
@@ -91,10 +89,6 @@ func (c *Client) MakePostBody(data map[string]interface{}) []byte {
 }
 
 func (c *Client) Do(req *Request, retry int) (*Response, error) {
-	if retry <= 0 {
-		retry = 1
-	}
-
 	resp, timeDuration, err := c.do(req)
 	if err != nil {
 		for i := 0; i < retry; i++ {
