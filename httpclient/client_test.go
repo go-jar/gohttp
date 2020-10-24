@@ -9,7 +9,7 @@ import (
 
 func TestGet(t *testing.T) {
 	client := newClient()
-	resp, err := client.Get("http://127.0.0.1:8010/demo/DescribeDemo", nil, "", 1)
+	resp, err := client.Get("http://127.0.0.1:8010/demo/DescribeDemo", nil, "", "", 1)
 	if err != nil {
 		fmt.Println(err)
 	}
@@ -25,7 +25,7 @@ func TestPost(t *testing.T) {
 	}
 
 	body := client.MakePostBodyUrlEncode(params)
-	resp, err := client.Post("http://127.0.0.1:8010/demo/ProcessPost", body, nil, "", 1)
+	resp, err := client.Post("http://127.0.0.1:8010/demo/ProcessPost", body, nil, "", "", 1)
 	if err != nil {
 		fmt.Println(err)
 	}
@@ -33,7 +33,7 @@ func TestPost(t *testing.T) {
 }
 
 func newClient() *Client {
-	logger, _ := golog.NewConsoleLogger(golog.LEVEL_INFO)
+	logger, _ := golog.NewConsoleLogger(golog.LEVEL_DEBUG)
 	config := NewConfig()
 	client := NewClient(config, logger)
 	return client

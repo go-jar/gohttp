@@ -29,6 +29,8 @@ type Request struct {
 	Ip      string
 	Headers map[string]string
 
+	TraceId string
+
 	*http.Request
 }
 
@@ -60,8 +62,8 @@ func NewClient(cfg *Config, l golog.ILogger) *Client {
 	}
 }
 
-func (c *Client) Get(url string, headers map[string]string, ip string, retry int) (*Response, error) {
-	req, err := NewRequest(http.MethodGet, url, nil, headers, ip)
+func (c *Client) Get(url string, headers map[string]string, ip, traceId string, retry int) (*Response, error) {
+	req, err := NewRequest(http.MethodGet, url, nil, headers, ip, traceId)
 	if err != nil {
 		return nil, err
 	}
@@ -69,8 +71,8 @@ func (c *Client) Get(url string, headers map[string]string, ip string, retry int
 	return c.Do(req, retry)
 }
 
-func (c *Client) Post(ur string, data []byte, headers map[string]string, ip string, retry int) (*Response, error) {
-	req, err := NewRequest(http.MethodGet, ur, data, headers, ip)
+func (c *Client) Post(url string, data []byte, headers map[string]string, ip, traceId string, retry int) (*Response, error) {
+	req, err := NewRequest(http.MethodGet, url, data, headers, ip, traceId)
 	if err != nil {
 		return nil, err
 	}
@@ -100,6 +102,7 @@ func (c *Client) Do(req *Request, retry int) (*Response, error) {
 	}
 
 	msg := [][]byte{
+		[]byte("TraceId: " + req.TraceId),
 		[]byte("Host: " + req.Host),
 		[]byte("URL: " + req.Url),
 		[]byte("TimeDuration: " + timeDuration.String()),
@@ -140,7 +143,7 @@ func (c *Client) do(req *Request) (*http.Response, time.Duration, error) {
 	return resp, t, nil
 }
 
-func NewRequest(method string, url string, body []byte, headers map[string]string, ip string) (*Request, error) {
+func NewRequest(method string, url string, body []byte, headers map[string]string, ip, traceId string) (*Request, error) {
 	req, err := http.NewRequest(method, url, bytes.NewReader(body))
 	if err != nil {
 		return nil, err
@@ -160,12 +163,17 @@ func NewRequest(method string, url string, body []byte, headers map[string]strin
 		}
 	}
 
+	if traceId == "" {
+		traceId = "-"
+	}
+
 	return &Request{
 		Method:  method,
 		Url:     url,
 		Body:    body,
 		Headers: headers,
 		Ip:      ip,
+		TraceId: traceId,
 		Request: req,
 	}, nil
 }
