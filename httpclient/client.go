@@ -3,6 +3,7 @@ package httpclient
 import (
 	"bytes"
 	"fmt"
+	"github.com/goinbox/gomisc"
 	"io/ioutil"
 	"net"
 	"net/http"
@@ -15,9 +16,10 @@ import (
 )
 
 type Client struct {
-	config *Config
-	logger golog.ILogger
-	retry  int
+	config  *Config
+	logger  golog.ILogger
+	retry   int
+	traceId []byte
 
 	*http.Client
 }
@@ -29,8 +31,6 @@ type Request struct {
 	Ip      string
 	Headers map[string]string
 
-	TraceId string
-
 	*http.Request
 }
 
@@ -41,10 +41,12 @@ type Response struct {
 	*http.Response
 }
 
-func NewClient(cfg *Config, l golog.ILogger) *Client {
+func NewClient(cfg *Config, logger golog.ILogger) *Client {
 	return &Client{
-		config: NewConfig(),
-		logger: l,
+		config:  NewConfig(),
+		logger:  logger,
+		traceId: []byte("-"),
+
 		Client: &http.Client{
 			Timeout: cfg.Timeout,
 			Transport: &http.Transport{
@@ -62,8 +64,14 @@ func NewClient(cfg *Config, l golog.ILogger) *Client {
 	}
 }
 
-func (c *Client) Get(url string, headers map[string]string, ip, traceId string, retry int) (*Response, error) {
-	req, err := NewRequest(http.MethodGet, url, nil, headers, ip, traceId)
+func (c *Client) SetTraceId(traceId []byte) *Client {
+	c.traceId = traceId
+
+	return c
+}
+
+func (c *Client) Get(url string, headers map[string]string, ip string, retry int) (*Response, error) {
+	req, err := NewRequest(http.MethodGet, url, nil, headers, ip)
 	if err != nil {
 		return nil, err
 	}
@@ -71,8 +79,8 @@ func (c *Client) Get(url string, headers map[string]string, ip, traceId string, 
 	return c.Do(req, retry)
 }
 
-func (c *Client) Post(url string, data []byte, headers map[string]string, ip, traceId string, retry int) (*Response, error) {
-	req, err := NewRequest(http.MethodGet, url, data, headers, ip, traceId)
+func (c *Client) Post(url string, data []byte, headers map[string]string, ip string, retry int) (*Response, error) {
+	req, err := NewRequest(http.MethodGet, url, data, headers, ip)
 	if err != nil {
 		return nil, err
 	}
@@ -102,7 +110,6 @@ func (c *Client) Do(req *Request, retry int) (*Response, error) {
 	}
 
 	msg := [][]byte{
-		[]byte("TraceId: " + req.TraceId),
 		[]byte("Host: " + req.Host),
 		[]byte("URL: " + req.Url),
 		[]byte("TimeDuration: " + timeDuration.String()),
@@ -112,12 +119,12 @@ func (c *Client) Do(req *Request, retry int) (*Response, error) {
 			msg = append(msg, []byte("StatusCode: "+strconv.Itoa(resp.StatusCode)))
 		}
 		msg = append(msg, []byte("Error: "+err.Error()))
-		c.logger.Error(bytes.Join(msg, []byte("\t")))
+		c.logger.Error(c.fmtLog(bytes.Join(msg, []byte("\t"))))
 		return nil, err
 	}
 
 	msg = append(msg, []byte("StatusCode: "+strconv.Itoa(resp.StatusCode)))
-	c.logger.Log(c.config.LogLevel, bytes.Join(msg, []byte("\t")))
+	c.logger.Log(c.config.LogLevel, c.fmtLog(bytes.Join(msg, []byte("\t"))))
 
 	contents, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
@@ -129,6 +136,14 @@ func (c *Client) Do(req *Request, retry int) (*Response, error) {
 		Contents:     contents,
 		Response:     resp,
 	}, nil
+}
+
+func (c *Client) fmtLog(msg []byte) []byte {
+	return gomisc.AppendBytes(
+		c.traceId, []byte("\t"),
+		[]byte("[HttpClient]\t"),
+		msg,
+	)
 }
 
 func (c *Client) do(req *Request) (*http.Response, time.Duration, error) {
@@ -143,7 +158,7 @@ func (c *Client) do(req *Request) (*http.Response, time.Duration, error) {
 	return resp, t, nil
 }
 
-func NewRequest(method string, url string, body []byte, headers map[string]string, ip, traceId string) (*Request, error) {
+func NewRequest(method string, url string, body []byte, headers map[string]string, ip string) (*Request, error) {
 	req, err := http.NewRequest(method, url, bytes.NewReader(body))
 	if err != nil {
 		return nil, err
@@ -163,17 +178,12 @@ func NewRequest(method string, url string, body []byte, headers map[string]strin
 		}
 	}
 
-	if traceId == "" {
-		traceId = "-"
-	}
-
 	return &Request{
 		Method:  method,
 		Url:     url,
 		Body:    body,
 		Headers: headers,
 		Ip:      ip,
-		TraceId: traceId,
 		Request: req,
 	}, nil
 }

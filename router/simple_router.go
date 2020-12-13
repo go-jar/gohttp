@@ -10,15 +10,29 @@ import (
 type SimpleRouter struct {
 	controllerRegex *regexp.Regexp
 	actionRegex     *regexp.Regexp
-	controllerTable map[string]*controllerItem
+
+	controllerTableDefined []*controllerItemDefined
+	controllerTable        map[string]*controllerItem
 }
 
 type controllerItem struct {
-	ctrl           controller.Controller
+	ctrl      controller.Controller
+	ctrlValue *reflect.Value
+	ctrlType  reflect.Type
+
+	controllerName string
 	actionValueMap map[string]*actionItem
 }
 
+type controllerItemDefined struct {
+	pathRegex *regexp.Regexp
+
+	controllerName string
+	actionName     string
+}
+
 type actionItem struct {
+	argsNum     int
 	actionValue *reflect.Value
 }
 
@@ -36,48 +50,93 @@ func (sr *SimpleRouter) RegisterRoutes(cls ...controller.Controller) {
 	}
 }
 
-func (sr *SimpleRouter) registerRoute(ctrl controller.Controller) {
-	if sr.isControllerItemExist(ctrl) {
+func (sr *SimpleRouter) DefineRoute(pattern string, ctrl controller.Controller, actionName string) {
+	methodName := strings.Title(actionName) + "Action"
+	actionName = strings.ToLower(methodName)
+	if actionName == "" {
 		return
 	}
 
-	controllerType := reflect.TypeOf(ctrl)
-	controllerValue := reflect.ValueOf(ctrl)
-	actItem := make(map[string]*actionItem)
+	ctrlItem := sr.getOrInitControllerItem(ctrl)
+	if ctrlItem == nil {
+		return
+	}
+
+	action, ok := ctrlItem.ctrlType.MethodByName(methodName)
+	if !ok {
+		return
+	}
+
+	actionArgsNum := sr.getActionArgsNum(action, ctrlItem.ctrlType)
+	if actionArgsNum == -1 {
+		return
+	}
+
+	actionValue := ctrlItem.ctrlValue.MethodByName(methodName)
+	ctrlItem.actionValueMap[actionName] = &actionItem{
+		argsNum:     actionArgsNum,
+		actionValue: &actionValue,
+	}
+
+	sr.controllerTableDefined = append(sr.controllerTableDefined, &controllerItemDefined{
+		pathRegex: regexp.MustCompile(pattern),
+
+		controllerName: strings.ToLower(ctrlItem.controllerName),
+		actionName:     strings.ToLower(actionName),
+	})
+}
+
+func (sr *SimpleRouter) registerRoute(ctrl controller.Controller) {
+	ctrlItem := sr.getOrInitControllerItem(ctrl)
+	if ctrlItem == nil {
+		return
+	}
+
+	controllerType := ctrlItem.ctrlType
+	controllerValue := ctrlItem.ctrlValue
 
 	for i := 0; i < controllerValue.NumMethod(); i++ {
-		actionName := controllerType.Method(i).Name
-		actionName = sr.getActionName(actionName)
+		actionT := controllerType.Method(i)
+		actionName := sr.getActionName(actionT.Name)
 		if actionName == "" {
 			continue
 		}
 
-		action := controllerValue.Method(i)
-		actItem[actionName] = &actionItem{
-			actionValue: &action,
+		actionArgsNum := sr.getActionArgsNum(actionT, controllerType)
+		if actionArgsNum == -1 {
+			continue
 		}
-	}
 
-	controllerName := controllerType.String()
-	controllerName = sr.getControllerName(controllerName)
-	sr.controllerTable[controllerName] = &controllerItem{
-		ctrl:           ctrl,
-		actionValueMap: actItem,
+		actionV := controllerValue.Method(i)
+		ctrlItem.actionValueMap[actionName] = &actionItem{
+			argsNum:     actionArgsNum,
+			actionValue: &actionV,
+		}
 	}
 }
 
-func (sr *SimpleRouter) isControllerItemExist(ctrl controller.Controller) bool {
-	controllerType := reflect.TypeOf(ctrl)
+func (sr *SimpleRouter) getOrInitControllerItem(ctrl controller.Controller) *controllerItem {
+	controllerValue := reflect.ValueOf(ctrl)
+	controllerType := controllerValue.Type()
+
 	controllerName := sr.getControllerName(controllerType.String())
 	if controllerName == "" {
-		return false
+		return nil
 	}
 
-	_, ok := sr.controllerTable[controllerName]
+	ctrlItem, ok := sr.controllerTable[controllerName]
 	if !ok {
-		return false
+		ctrlItem = &controllerItem{
+			ctrl:      ctrl,
+			ctrlType:  controllerType,
+			ctrlValue: &controllerValue,
+
+			controllerName: controllerName,
+			actionValueMap: make(map[string]*actionItem),
+		}
+		sr.controllerTable[controllerName] = ctrlItem
 	}
-	return true
+	return ctrlItem
 }
 
 func (sr *SimpleRouter) getControllerName(controllerName string) string {
@@ -103,7 +162,59 @@ func (sr *SimpleRouter) getActionName(actionName string) string {
 	return strings.ToLower(matches[1])
 }
 
+func (sr *SimpleRouter) getActionArgsNum(actionMethod reflect.Method, controllerType reflect.Type) int {
+	n := actionMethod.Type.NumIn()
+	if n < 2 {
+		return -1
+	}
+
+	if actionMethod.Type.In(0).String() != controllerType.String() {
+		return -1
+	}
+
+	if n > 2 {
+		valid := true
+		for i := 2; i < n; i++ {
+			if actionMethod.Type.In(i).String() != "string" {
+				valid = false
+				break
+			}
+		}
+		if !valid {
+			return -1
+		}
+	}
+
+	return n - 2 // delete sr and context
+}
+
 func (sr *SimpleRouter) FindRoute(path string) *Route {
+	path = strings.ToLower(path)
+
+	route := sr.findRouteDefined(path)
+	if route == nil {
+		route = sr.findRouteGeneral(path)
+	}
+
+	return route
+}
+
+func (sr *SimpleRouter) findRouteDefined(path string) *Route {
+	for _, ctrlDefined := range sr.controllerTableDefined {
+		matches := ctrlDefined.pathRegex.FindStringSubmatch(path)
+		if matches == nil {
+			continue
+		}
+
+		route, argsNum := sr.getRoute(ctrlDefined.controllerName, ctrlDefined.actionName)
+		route.Args = sr.makeActionArgs(matches[1:], argsNum)
+		return route
+	}
+
+	return nil
+}
+
+func (sr *SimpleRouter) findRouteGeneral(path string) *Route {
 	path = strings.Trim(path, "/")
 	pathSplit := strings.Split(path, "/")
 
@@ -117,26 +228,43 @@ func (sr *SimpleRouter) FindRoute(path string) *Route {
 		return nil
 	}
 
-	route := sr.getRoute(controllerName, actionName)
+	route, _ := sr.getRoute(controllerName, actionName)
 	return route
 }
 
-func (sr *SimpleRouter) getRoute(controllerName, actionName string) *Route {
+func (sr *SimpleRouter) getRoute(controllerName, actionName string) (*Route, int) {
 	controllerName = strings.ToLower(controllerName)
 	actionName = strings.ToLower(actionName)
 
 	ctrlItem, ok := sr.controllerTable[controllerName]
 	if !ok {
-		return nil
+		return nil, 0
 	}
 
 	actItem, ok := ctrlItem.actionValueMap[actionName]
 	if !ok {
-		return nil
+		return nil, 0
 	}
 
 	return &Route{
 		Controller:  ctrlItem.ctrl,
 		ActionValue: actItem.actionValue,
+	}, actItem.argsNum
+}
+
+func (sr *SimpleRouter) makeActionArgs(args []string, validArgsNum int) []string {
+	rgArgsNum := len(args)
+	missArgsNum := validArgsNum - rgArgsNum
+
+	switch {
+	case missArgsNum == 0:
+	case missArgsNum > 0:
+		for i := 0; i < missArgsNum; i++ {
+			args = append(args, "")
+		}
+	case missArgsNum < 0:
+		args = args[:validArgsNum]
 	}
+
+	return args
 }

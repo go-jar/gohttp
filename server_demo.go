@@ -13,10 +13,16 @@ import (
 
 func main() {
 	demoController := new(DemoController)
+	testController := new(TestController)
+
 	simpleRouter := router.NewSimpleRouter()
+
+	simpleRouter.DefineRoute("/test/args/([0-9]+)$", testController, "Args")
+	simpleRouter.DefineRoute("/demo/args/([0-9]+)$", testController, "Args")
 	simpleRouter.RegisterRoutes(demoController)
+
 	sys := system.NewSystem(simpleRouter)
-	_ = gracehttp.ListenAndServe(":8010", sys)
+	gracehttp.ListenAndServe(":8010", sys)
 }
 
 type DemoController struct {
@@ -64,4 +70,25 @@ func (dc *DemoController) ProcessPostAction(c *DemoContext) {
 	c.ResponseWriter().Write([]byte(msg))
 
 	fmt.Println(string(body))
+}
+
+func (dc *DemoController) ArgsAction(c *DemoContext, id string) {
+	msg := "Hi, Client! Your data is: " + id + "\n"
+	c.ResponseWriter().Write([]byte(msg))
+	fmt.Print(msg)
+}
+
+type TestController struct {
+}
+
+func (tc *TestController) NewActionContext(w http.ResponseWriter, req *http.Request) controller.ActionContext {
+	return &DemoContext{
+		controller.NewBaseContext(w, req),
+	}
+}
+
+func (tc *TestController) ArgsAction(dc *DemoContext, id string) {
+	msg := "Hi, Client! Your data is: " + id + "\n"
+	dc.ResponseWriter().Write([]byte(msg))
+	fmt.Print(msg)
 }

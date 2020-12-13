@@ -54,13 +54,18 @@ func (s *System) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	}()
 
 	actionContext.BeforeAction()
-	route.ActionValue.Call(s.makeArgs(actionContext))
+	route.ActionValue.Call(s.makeArgs(actionContext, route.Args))
 	actionContext.AfterAction()
 }
 
-func (s *System) makeArgs(ctxt controller.ActionContext) []reflect.Value {
-	argsValues := make([]reflect.Value, 1)
+func (s *System) makeArgs(ctxt controller.ActionContext, args []string) []reflect.Value {
+	argsValues := make([]reflect.Value, len(args)+1)
 	argsValues[0] = reflect.ValueOf(ctxt)
+
+	for i, arg := range args {
+		argsValues[i+1] = reflect.ValueOf(arg)
+	}
+
 	return argsValues
 }
 
