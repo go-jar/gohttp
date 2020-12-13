@@ -3,11 +3,16 @@
 ## 1.1 Server
 ```
 $ cd gohttp
-$ go build -o example example.go
-$ ./example
+$ go mod init gohttp
+$ go build -o server server_demo.go
+$ ./server
 
+Hi, Client! Your data is: 123
 destruct demo context
-
+Hi, Client! Your data is: 123
+destruct demo context
+destruct demo context
+a=1&b=2&c=3
 destruct demo context
 
 2020/10/09 09:43:56 [pid: 32339] Receive signal SIGUSR2. To restart the server gracefully.
@@ -25,14 +30,31 @@ destruct demo context
 
 ## 1.2 Client
 ```
-$ curl http://127.0.0.1:8010/demo/DescribeDemo
+$ cd gohttp/httpclient
+$ go test
+
+[Debug] [2020-12-13 22:31:03]   -       [HttpClient]    Host: 127.0.0.1:8010    URL: http://127.0.0.1:8010/demo/args/123        TimeDuration: 986.798µs StatusCode: 200
+Hi, Client! Your data is: 123
+before demo action
+after demo action
+ 986.798µs
+[Debug] [2020-12-13 22:31:03]   -       [HttpClient]    Host: 127.0.0.1:8010    URL: http://127.0.0.1:8010/test/args/123        TimeDuration: 566.368µs StatusCode: 200
+Hi, Client! Your data is: 123
+before demo action
+after demo action
+ 566.368µs
+[Debug] [2020-12-13 22:31:03]   -       [HttpClient]    Host: 127.0.0.1:8010    URL: http://127.0.0.1:8010/demo/DescribeDemo    TimeDuration: 606.191µs StatusCode: 200
 before demo action
 DescribeDemo
 after demo action
-
-$ curl http://127.0.0.1:8010/demo/Redirect
-<a href="https://baidu.com">Found</a>
+ 606.191µs
+[Debug] [2020-12-13 22:31:03]   -       [HttpClient]    Host: 127.0.0.1:8010    URL: http://127.0.0.1:8010/demo/ProcessPost     TimeDuration: 482.174µs StatusCode: 200
+Hi, Client! Your data is: a=1&b=2&c=3
 before demo action
+after demo action
+ 482.174µs
+PASS
+ok      gohttp/httpclient       0.006s
 
 $ ps -ef | grep example
 root     32339 29709  0 09:42 pts/1    00:00:00 ./example
@@ -68,8 +90,12 @@ $ kill -USR2 32759
 # 3 router
 
 1. 定义 Controller。每个 Controller 中有多个 Action，每个 Action 的第 1 个参数为 Controller 自身，第 2 个参数为 ActionContext。ActionContext 中主要记录 Request 和 Response。
-2. 注册路由。router.RegisRoutes 自动获取 Controller 下的所有 Action 并注册到路由表中。
-3. 查找路由。router.FindRoute 从 URL 中解析出 Controller 名称和 Action 名称，根据 Controller 名称查找路由表，在找到的路由项中继续根据 Action 名称查找 Action。
+2. 注册路由。
+    - 一般路由注册：router.RegisterRoutes 自动获取 Controller 下的所有 Action 并注册到路由表中。
+    - 注册指定路由：注册 Controller 中的 Action 时，将需要匹配的 path 规则也注册好，该规则主要是查找 url 中除了 Controller 和 Action 以外的参数。
+3. 查找路由。
+    - 一般路由查找：router.FindRoute 从 URL 中解析出 Controller 名称和 Action 名称，根据 Controller 名称查找路由表，在找到的路由项中继续根据 Action 名称查找 Action。
+    - 查找指定路由：查找匹配指定 path 规则的路由。
 4. 请求处理。system.ServeHTTP 用查找到的 Action 对请求进行处理。
 
 # 参考
