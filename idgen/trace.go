@@ -41,20 +41,15 @@ func (t *TraceIdGenerator) GenerateId(ip, port string) ([]byte, error) {
 			return nil, err
 		}
 		id += fmt.Sprintf("%02x", v)
-		fmt.Println(id)
 	}
-	fmt.Println(id)
 	id += fmt.Sprintf("%05s", port)
-	fmt.Println(id)
 	id += strconv.FormatInt(time.Now().UnixNano()/1000000, 10)
-	fmt.Println(id)
 	t.lock.Lock()
 	increment := t.increment
 	t.increment = (t.increment + 1) % t.maxIncrement
 	t.lock.Unlock()
 
 	id += fmt.Sprintf(t.incrementFormat, increment)
-	fmt.Println(id)
 
 	return []byte(id), nil
 }
