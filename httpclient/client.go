@@ -80,7 +80,7 @@ func (c *Client) Get(url string, headers map[string]string, ip string, retry int
 }
 
 func (c *Client) Post(url string, data []byte, headers map[string]string, ip string, retry int) (*Response, error) {
-	req, err := NewRequest(http.MethodGet, url, data, headers, ip)
+	req, err := NewRequest(http.MethodPost, url, data, headers, ip)
 	if err != nil {
 		return nil, err
 	}
