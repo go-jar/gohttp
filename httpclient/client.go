@@ -3,7 +3,6 @@ package httpclient
 import (
 	"bytes"
 	"fmt"
-	"github.com/goinbox/gomisc"
 	"io/ioutil"
 	"net"
 	"net/http"
@@ -11,6 +10,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/goinbox/gomisc"
 
 	"github.com/go-jar/golog"
 )

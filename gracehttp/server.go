@@ -14,9 +14,9 @@ import (
 )
 
 const (
-	GRACEFUL_ENVIRON_KEY    = "IS_GRACEFUL"
-	GRACEFUL_ENVIRON_STRING = GRACEFUL_ENVIRON_KEY + "=1"
-	GRACEFUL_LISTENER_FD    = 3
+	GracefulEnvironKey    = "IS_GRACEFUL"
+	GracefulEnvironString = GracefulEnvironKey + "=1"
+	GracefulListenerFd    = 3
 )
 
 type Server struct {
@@ -30,7 +30,7 @@ type Server struct {
 
 func NewServer(addr string, handler http.Handler, readTimeout, writeTimeout time.Duration) *Server {
 	isChild := false
-	if os.Getenv(GRACEFUL_ENVIRON_KEY) != "" {
+	if os.Getenv(GracefulEnvironKey) != "" {
 		isChild = true
 	}
 
@@ -97,7 +97,7 @@ func (s *Server) Listen(addr string) (net.Listener, error) {
 	var err error
 
 	if s.isChild {
-		file := os.NewFile(GRACEFUL_LISTENER_FD, "")
+		file := os.NewFile(GracefulListenerFd, "")
 		ln, err = net.FileListener(file)
 		if err != nil {
 			s.logf("net.FileListener error: %v", err)
@@ -169,8 +169,8 @@ func (s *Server) startNewProcess() (uintptr, error) {
 	}
 
 	envs := os.Environ()
-	if os.Getenv(GRACEFUL_ENVIRON_KEY) == "" {
-		envs = append(envs, GRACEFUL_ENVIRON_STRING)
+	if os.Getenv(GracefulEnvironKey) == "" {
+		envs = append(envs, GracefulEnvironString)
 	}
 
 	procAttr := &syscall.ProcAttr{

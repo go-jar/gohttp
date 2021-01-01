@@ -6,14 +6,14 @@ import (
 )
 
 const (
-	DEFAULT_READ_TIMEOUT  = 60 * time.Second
-	DEFAULT_WRITE_TIMEOUT = DEFAULT_READ_TIMEOUT
+	DefaultReadTimeout  = 60 * time.Second
+	DefaultWriteTimeout = DefaultReadTimeout
 )
 
 func ListenAndServe(addr string, handler http.Handler) error {
-	return NewServer(addr, handler, DEFAULT_READ_TIMEOUT, DEFAULT_WRITE_TIMEOUT).ListenAndServe()
+	return NewServer(addr, handler, DefaultReadTimeout, DefaultWriteTimeout).ListenAndServe()
 }
 
 func ListenAndServeTLS(addr string, certFile string, keyFile string, handler http.Handler) error {
-	return NewServer(addr, handler, DEFAULT_READ_TIMEOUT, DEFAULT_WRITE_TIMEOUT).ListenAndServeTLS(certFile, keyFile)
+	return NewServer(addr, handler, DefaultReadTimeout, DefaultWriteTimeout).ListenAndServeTLS(certFile, keyFile)
 }
