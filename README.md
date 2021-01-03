@@ -30,9 +30,24 @@ destruct demo context
 
 ## 1.2 Client
 ```
+$ curl http://127.0.0.1:8010/demo/args/123
+Hi, Client! Your data is: 123
+before demo action
+after demo action
+
+$ curl http://127.0.0.1:8010/test/args/123
+Hi, Client! Your data is: 123
+before demo action
+after demo action
+
 $ curl http://127.0.0.1:8010/demo/DescribeDemo
 before demo action
 DescribeDemo
+after demo action
+
+curl http://127.0.0.1:8010/demo/ProcessPost -d '{"a": 1, "b": 2, "c": 3}'
+Hi, Client! Your data is: {"a": 1, "b": 2, "c": 3}
+before demo action
 after demo action
 
 $ curl http://127.0.0.1:8010/demo/Redirect
