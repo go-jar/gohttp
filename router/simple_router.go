@@ -1,10 +1,11 @@
 package router
 
 import (
-	"gohttp/controller"
 	"reflect"
 	"regexp"
 	"strings"
+
+	"github.com/go-jar/gohttp/controller"
 )
 
 type SimpleRouter struct {

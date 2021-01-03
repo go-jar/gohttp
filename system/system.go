@@ -1,10 +1,11 @@
 package system
 
 import (
-	"gohttp/controller"
-	"gohttp/router"
 	"net/http"
 	"reflect"
+
+	"github.com/go-jar/gohttp/controller"
+	"github.com/go-jar/gohttp/router"
 )
 
 type RoutePathFunc func(req *http.Request) string

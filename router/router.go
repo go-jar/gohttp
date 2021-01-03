@@ -1,8 +1,9 @@
 package router
 
 import (
-	"gohttp/controller"
 	"reflect"
+
+	"github.com/go-jar/gohttp/controller"
 )
 
 type Route struct {
