@@ -40,7 +40,7 @@ func (s *System) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	actionContext := route.Controller.NewActionContext(w, req)
+	actionContext := route.Controller.NewActionContext(req, w)
 
 	defer func() {
 		if err := recover(); err != nil {

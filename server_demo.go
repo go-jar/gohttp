@@ -29,9 +29,9 @@ func main() {
 type DemoController struct {
 }
 
-func (dc *DemoController) NewActionContext(w http.ResponseWriter, req *http.Request) controller.ActionContext {
+func (dc *DemoController) NewActionContext(req *http.Request, w http.ResponseWriter) controller.ActionContext {
 	return &DemoContext{
-		controller.NewBaseContext(w, req),
+		controller.NewBaseContext(req, w),
 	}
 }
 
@@ -82,9 +82,9 @@ func (dc *DemoController) ArgsAction(c *DemoContext, id string) {
 type TestController struct {
 }
 
-func (tc *TestController) NewActionContext(w http.ResponseWriter, req *http.Request) controller.ActionContext {
+func (tc *TestController) NewActionContext(req *http.Request, w http.ResponseWriter) controller.ActionContext {
 	return &DemoContext{
-		controller.NewBaseContext(w, req),
+		controller.NewBaseContext(req, w),
 	}
 }
 

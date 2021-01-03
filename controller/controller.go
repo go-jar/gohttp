@@ -25,7 +25,7 @@ type BaseContext struct {
 	responseBody   []byte
 }
 
-func NewBaseContext(w http.ResponseWriter, req *http.Request) *BaseContext {
+func NewBaseContext(req *http.Request, w http.ResponseWriter) *BaseContext {
 	return &BaseContext{
 		request:        req,
 		responseWriter: w,
@@ -62,5 +62,5 @@ func (bc *BaseContext) Destruct() {
 }
 
 type Controller interface {
-	NewActionContext(w http.ResponseWriter, req *http.Request) ActionContext
+	NewActionContext(req *http.Request, w http.ResponseWriter) ActionContext
 }
