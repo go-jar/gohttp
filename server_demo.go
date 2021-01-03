@@ -2,13 +2,14 @@ package main
 
 import (
 	"fmt"
-	"gohttp/controller"
-	"gohttp/gracehttp"
-	"gohttp/router"
-	"gohttp/system"
 	"io/ioutil"
 	"log"
 	"net/http"
+
+	"github.com/go-jar/gohttp/controller"
+	"github.com/go-jar/gohttp/gracehttp"
+	"github.com/go-jar/gohttp/router"
+	"github.com/go-jar/gohttp/system"
 )
 
 func main() {
