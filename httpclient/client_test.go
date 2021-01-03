@@ -48,7 +48,7 @@ func TestPost(t *testing.T) {
 }
 
 func newClient() *Client {
-	logger, _ := golog.NewConsoleLogger(golog.LEVEL_DEBUG)
+	logger, _ := golog.NewConsoleLogger(golog.LevelDebug)
 	config := NewConfig()
 	client := NewClient(config, logger)
 	return client
