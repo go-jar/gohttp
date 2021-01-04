@@ -200,7 +200,7 @@ func (sr *SimpleRouter) getActionArgsNum(actionMethod reflect.Method, controller
 }
 
 func (sr *SimpleRouter) logRoutes() {
-	sr.logger.Debug([]byte("routes registered:"))
+	sr.logger.Debug([]byte("routers registered:"))
 
 	for _, route := range sr.controllerTableDefined {
 		sr.logger.Debug([]byte(route.controllerName + "." + route.actionName))
