@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/go-jar/gohttp/controller"
+	"github.com/go-jar/golog"
 )
 
 type SimpleRouter struct {
@@ -14,6 +15,8 @@ type SimpleRouter struct {
 
 	controllerTableDefined []*controllerItemDefined
 	controllerTable        map[string]*controllerItem
+
+	logger golog.ILogger
 }
 
 type controllerItem struct {
@@ -37,11 +40,16 @@ type actionItem struct {
 	actionValue *reflect.Value
 }
 
-func NewSimpleRouter() *SimpleRouter {
+func NewSimpleRouter(logger golog.ILogger) *SimpleRouter {
+	if logger == nil {
+		logger = new(golog.NoopLogger)
+	}
+
 	return &SimpleRouter{
 		controllerRegex: regexp.MustCompile("([A-Z][A-Za-z0-9]*)Controller$"),
 		actionRegex:     regexp.MustCompile("^([A-Z][A-Za-z0-9]*)Action$"),
 		controllerTable: make(map[string]*controllerItem),
+		logger:          logger,
 	}
 }
 
@@ -49,6 +57,8 @@ func (sr *SimpleRouter) RegisterRoutes(cls ...controller.Controller) {
 	for _, ctrl := range cls {
 		sr.registerRoute(ctrl)
 	}
+
+	sr.logRoutes()
 }
 
 func (sr *SimpleRouter) DefineRoute(pattern string, ctrl controller.Controller, actionName string) {
@@ -189,6 +199,20 @@ func (sr *SimpleRouter) getActionArgsNum(actionMethod reflect.Method, controller
 	return n - 2 // delete sr and context
 }
 
+func (sr *SimpleRouter) logRoutes() {
+	sr.logger.Debug([]byte("routes registered:"))
+
+	for _, route := range sr.controllerTableDefined {
+		sr.logger.Debug([]byte(route.controllerName + "." + route.actionName))
+	}
+
+	for ctrlName, actions := range sr.controllerTable {
+		for actionName, _ := range actions.actionValueMap {
+			sr.logger.Debug([]byte(ctrlName + "." + actionName))
+		}
+	}
+}
+
 func (sr *SimpleRouter) FindRoute(path string) *Route {
 	path = strings.ToLower(path)
 
@@ -239,11 +263,13 @@ func (sr *SimpleRouter) getRoute(controllerName, actionName string) (*Route, int
 
 	ctrlItem, ok := sr.controllerTable[controllerName]
 	if !ok {
+		sr.logger.Error([]byte(controllerName + "not found"))
 		return nil, 0
 	}
 
 	actItem, ok := ctrlItem.actionValueMap[actionName]
 	if !ok {
+		sr.logger.Error([]byte(actionName + "not found"))
 		return nil, 0
 	}
 

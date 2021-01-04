@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"github.com/go-jar/golog"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -16,14 +17,18 @@ func main() {
 	demoController := new(DemoController)
 	testController := new(TestController)
 
-	simpleRouter := router.NewSimpleRouter()
+	logger, err := golog.NewConsoleLogger(golog.LevelDebug)
+	if err != nil {
+		fmt.Println(err)
+	}
+	simpleRouter := router.NewSimpleRouter(logger)
 
 	simpleRouter.DefineRoute("/test/args/([0-9]+)$", testController, "Args")
 	simpleRouter.DefineRoute("/demo/args/([0-9]+)$", testController, "Args")
 	simpleRouter.RegisterRoutes(demoController)
 
 	sys := system.NewSystem(simpleRouter)
-	gracehttp.ListenAndServe(":8010", sys)
+	_ = gracehttp.ListenAndServe(":8010", sys)
 }
 
 type DemoController struct {
