@@ -11,6 +11,13 @@ func CheckIntIsPositive(v int) bool {
 	return false
 }
 
+func CheckIntGreaterEqual0(v int) bool {
+	if v >= 0 {
+		return true
+	}
+	return false
+}
+
 type intValue struct {
 	*baseValue
 

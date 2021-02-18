@@ -11,6 +11,13 @@ func CheckInt64IsPositive(v int64) bool {
 	return false
 }
 
+func CheckInt64GreaterEqual0(v int64) bool {
+	if v >= 0 {
+		return true
+	}
+	return false
+}
+
 type int64Value struct {
 	*baseValue
 
